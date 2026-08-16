@@ -3,3 +3,5 @@
 -Wall
 -Wextra
 -O2
+
+-Iinclude
