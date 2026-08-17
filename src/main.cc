@@ -14,7 +14,8 @@ int main() {
                                   {9, 10},
                                   {11, 12}};
 
-  //std::cout << matrix_a.at(1).at(2) << std::endl;
+  // std::cout << matrix_a.at(1).at(2) << std::endl;
+  // std::cout << matrix_a.size() << std::endl;
 
   gemm(matrix_a, matrix_b);
 
