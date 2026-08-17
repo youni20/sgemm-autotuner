@@ -1,9 +1,22 @@
-#include "gemm.h"
 #include <vector>
+
+#include "gemm.h"
 
 using std::vector;
 
 int main() {
+  vector<vector<int>> matrix_a = {// 2x3
+                                  {1, 2, 3},
+                                  {4, 5, 6}};
 
-    return 0;
+  vector<vector<int>> matrix_b = {// 3x2
+                                  {7, 8},
+                                  {9, 10},
+                                  {11, 12}};
+
+  //std::cout << matrix_a.at(1).at(2) << std::endl;
+
+  gemm(matrix_a, matrix_b);
+
+  return 0;
 }
