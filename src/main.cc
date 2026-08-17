@@ -1,6 +1,5 @@
-#include <vector>
-
 #include "gemm.h"
+#include <vector>
 
 using std::vector;
 
