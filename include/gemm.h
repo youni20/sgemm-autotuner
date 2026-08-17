@@ -9,8 +9,8 @@ using std::cout;
 using std::vector;
 
 template <typename T>
-vector<vector<T>> gemm(vector<vector<T>> &matrix_a,
-                       vector<vector<T>> &matrix_b) {
+vector<vector<T>> gemm(const vector<vector<T>> &matrix_a,
+                       const vector<vector<T>> &matrix_b) {
   if ((matrix_a[0].size() != matrix_b.size())) {
     throw std::invalid_argument(
         "ERROR: Matrices are not compatible for multiplication\n");
