@@ -9,18 +9,21 @@ using std::cout;
 using std::vector;
 
 template <typename T>
-vector<vector<T>> gemm(vector<T> &matrix_a, vector<T> &matrix_b) {
+vector<vector<T>> gemm(vector<vector<T>> &matrix_a,
+                       vector<vector<T>> &matrix_b) {
   if ((matrix_a[0].size() != matrix_b.size())) {
     throw std::invalid_argument(
         "ERROR: Matrices are not compatible for multiplication\n");
   } // Check if no. of colums of matrix A = no. of rows in matrix B
 
-  vector<vector<T>> final_matrix;
+  // Must allocate memory to it (fill with zeros)
+  vector<vector<T>> final_matrix(matrix_a.size(),
+                                 vector<T>(matrix_b[0].size(), 0));
 
   for (std::size_t i{0u}; i < matrix_a.size(); ++i) { // number of rows in A
     for (std::size_t j{0u}; j < matrix_b[0].size();
          ++j) { // number of columns in B
-      int running_total{0};
+      T running_total{0};
       for (std::size_t k{0u}; k < matrix_a[0].size(); ++k) {
         running_total += matrix_a[i][k] * matrix_b[k][j];
       }
