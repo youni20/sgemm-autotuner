@@ -16,7 +16,7 @@ int main() {
   // std::cout << matrix_a.at(1).at(2) << std::endl;
   // std::cout << matrix_a.size() << std::endl;
 
-  gemm(matrix_a, matrix_b);
+  auto matrix_c = gemm(matrix_a, matrix_b);
 
   return 0;
 }
