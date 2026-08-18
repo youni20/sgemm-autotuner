@@ -11,8 +11,12 @@ int main() {
   Matrix B{size, size}; // Since math works correct now we make it faster
 
   A.randomize();
+  B.randomize();
+
+  std::cout << "Execution Began...";
   auto start_time = std::chrono::high_resolution_clock::now();
-  // Matrix C = gemm(A, B);
+
+  Matrix C = gemm(A, B);
 
   auto end_time = std::chrono::high_resolution_clock::now();
   auto duration =
