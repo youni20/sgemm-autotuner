@@ -13,7 +13,7 @@ int main() {
   A.randomize();
   B.randomize();
 
-  std::cout << "Execution Began...";
+  std::cout << "Execution Began..." << std::flush;
   auto start_time = std::chrono::high_resolution_clock::now();
 
   Matrix C = gemm(A, B);
