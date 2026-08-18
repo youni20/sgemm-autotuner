@@ -1,6 +1,7 @@
 #include "gemm.h"
 #include "matrix.h"
 #include <iostream>
+// #include <chrono>
 
 void print_matrix(const Matrix &x) {
   for (int row{0u}; row < x.get_rows(); ++row) {
@@ -28,6 +29,8 @@ int main() {
   B(1, 1) = 10;
   B(2, 0) = 11;
   B(2, 1) = 12;
+
+  Matrix C = gemm(A, B);
 
   return 0;
 }

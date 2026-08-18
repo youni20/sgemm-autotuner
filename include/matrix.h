@@ -17,7 +17,7 @@ public:
 
   const double &operator()(int r, int c) const {
     return data.at((r * colum) + c);
-  }
+  };
 
   int get_rows() const;
   int get_colum() const;
