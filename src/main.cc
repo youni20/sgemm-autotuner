@@ -31,6 +31,7 @@ int main() {
   B(2, 1) = 12;
 
   Matrix C = gemm(A, B);
+  print_matrix(C);
 
   return 0;
 }
