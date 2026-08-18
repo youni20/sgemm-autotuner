@@ -13,6 +13,7 @@ void print_answer(const vector<vector<int>> &x) {
   }
 }
 
+
 int main() {
   vector<vector<int>> matrix_a = {// 2x3
                                   {1, 2, 3},

@@ -11,10 +11,12 @@ using std::vector;
 template <typename T>
 vector<vector<T>> gemm(const vector<vector<T>> &matrix_a,
                        const vector<vector<T>> &matrix_b) {
+
   if ((matrix_a[0].size() != matrix_b.size())) {
     throw std::invalid_argument(
         "ERROR: Matrices are not compatible for multiplication\n");
   } // Check if no. of colums of matrix A = no. of rows in matrix B
+
 
   // Must allocate memory to it (fill with zeros)
   vector<vector<T>> final_matrix(matrix_a.size(),
