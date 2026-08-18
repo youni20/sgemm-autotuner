@@ -1,40 +1,41 @@
-#include "gemm.h"
-#include "matrix.h"
 #include <chrono>
 #include <iostream>
 
-int main() {
-  srand(time(NULL)); // Needed here for the randomize function
-  int size = 1024;
+#include "gemm.h"
+#include "matrix.h"
 
-  Matrix A{size, size}; // Increased the matrix size to 1024x1024
-  Matrix B{size, size}; // Since math works correct now we make it faster
+int main()
+{
+    srand(time(NULL)); // Needed here for the randomize function
+    int size = 1024;
 
-  A.randomize();
-  B.randomize();
+    Matrix A { size, size }; // Increased the matrix size to 1024x1024
+    Matrix B { size, size }; // Since math works correct now we make it faster
 
-  int repetitions{0};
+    A.randomize();
+    B.randomize();
 
-  std::cout << "Execution Began..." << std::flush;
+    int repetitions { 0 };
 
-  while(repetitions!=3){  // Repeat a few times to get an avg time
-  std::cout << "Execution " << repetitions + 1 << std::endl;
+    std::cout << "Execution Began..." << std::flush;
 
-  auto start_time = std::chrono::high_resolution_clock::now();
+    while (repetitions != 3) { // Repeat a few times to get an avg time
+        std::cout << "Execution " << repetitions + 1 << std::endl;
 
-  Matrix C = gemm(A, B);
+        auto start_time = std::chrono::high_resolution_clock::now();
 
-  auto end_time = std::chrono::high_resolution_clock::now();
+        Matrix C = gemm(A, B);
 
-  auto duration = duration_cast<std::chrono::microseconds>(end_time - start_time);
-    std::cout << "\nExecution Time: " << duration.count() << " microseconds"
-            << std::endl;
+        auto end_time = std::chrono::high_resolution_clock::now();
 
-    ++repetitions;
+        auto duration = duration_cast<std::chrono::microseconds>(end_time - start_time);
+        std::cout << "\nExecution Time: " << duration.count() << " microseconds"
+                  << std::endl;
 
-  }
+        ++repetitions;
+    }
 
-  return 0;
+    return 0;
 }
 
 /*
