@@ -15,7 +15,7 @@ Here is my first implementation of the gemm process which works but obviously is
 ![First Prototype](images/implementation1.png)
 <br>
 
-Not only is this implementation a time complexity of O(n^3) which makes it inefficient but it also uses a vector within a vector. My initial thoughts were considering the fact this is matrix multiplication im attempting to implement it would only make sense for the factors being multiplied to be 2D matrices however upon further research I found that this is terrible for the cpu for various reasons.
+This implementation a time complexity of O(n^3) which makes it inefficient but it also uses a vector within a vector. My initial thoughts were considering the fact this is matrix multiplication im attempting to implement it would only make sense for the factors being multiplied to be 2D matrices however upon further research I found that this is terrible for the cpu for various reasons.
 
 1. With "vector<vector<int>>" the issue is that the outer vector just holds memory addresses, and each of these addresses points to an inner vector representing a row, which is located somewhere else within the heap memory.
 
@@ -33,10 +33,10 @@ The solution is to flatten the grid, since the computers ram is not like a grid 
 
 ![Moved to a 1D matrix to "trick" the cpu in a way](images/implementation2.png)
 
-Now it is better for the cpu as the data is stored contiguosly instead of scattered accross the heap. I have now implemented the baseline single-precision matrix multiplication (gemm). 
+Now it is better for the cpu as the data is stored contiguosly instead of scattered accross the heap.
 
-For a matrix size of 1024x1024, the unoptimized triple-loop prototype running on the contiguous 1D layout completed in around 5x10^6 microseconds accross multiple runs.
+The baseline execution time averages approximately $5.6$ seconds per run. This high latency highlights the inefficiency of the naive $O(n^3)$ algorithm and confirms the urgent need for cache blocking, vectorization, and parallelization.
 
-While storing the data contiguously avoids pointer chasing and cache misses compared to a std::vector<std::vector<float>>, this naive O(n^3) implementation still suffers from poor cache reuse and lacks vectorization. Future iterations will introduce tiling, SIMD, and multithreading to drastically improve performance.
+![The Results after running 3 tests with the same values and matrices](images/implementation3.png)
 
-![Result of running the program at this stage on 2 1024x1024 matrices](images/implementation3.png)
+These results serve as the baseline for evaluating subsequent optimization strategies. Future iterations will compare these metrics against OpenBLAS to quantify the performance gains achieved through architectural refinements.
