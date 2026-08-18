@@ -15,7 +15,7 @@ void print_answer(const vector<vector<int>> &x) {
 }
 
 int main() {
-  Matrix A{2, 3};
+  Matrix A{2, 3};  // 2x3
   A(0,0) = 1;
   A(0,1) = 2;
   A(0,2) = 3;
@@ -23,21 +23,13 @@ int main() {
   A(1,1) = 5;
   A(1,2) = 6;
 
+  Matrix B(3,2);  // 3x2
+  B(0,0) = 7;
+  B(0,1) = 8;
+  B(1,0) = 9;
+  B(1,1) = 10;
+  B(2,0) = 11;
+  B(2,1) = 12;
 
   return 0;
 }
-
-/*
-vector<vector<int>> matrix_a = {// 2x3
-                                {1, 2, 3},
-                                {4, 5, 6}};
-
-vector<vector<int>> matrix_b = {// 3x2
-                                {7, 8},
-                                {9, 10},
-                                {11, 12}};
-
-// std::cout << matrix_a.at(1).at(2) << std::endl;
-// std::cout << matrix_a.size() << std::endl;
-
-*/
