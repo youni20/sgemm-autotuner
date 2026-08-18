@@ -15,7 +15,14 @@ void print_answer(const vector<vector<int>> &x) {
 }
 
 int main() {
-  Matrix matrix_a{2, 3};
+  Matrix A{2, 3};
+  A(0,0) = 1;
+  A(0,1) = 2;
+  A(0,2) = 3;
+  A(1,0) = 4;
+  A(1,1) = 5;
+  A(1,2) = 6;
+
 
   return 0;
 }

@@ -13,9 +13,11 @@ public:
       : row(row), colum(colum),
         data(static_cast<std::size_t>(row * colum), initial_value) {};
 
-  double &operator()(int r, int c) { return data[(r * c) + colum]; };
+  double &operator()(int r, int c) { return data.at((r * c) + colum); };
 
-  const double &operator()(int r, int c) const { return data[(r * c) + colum]; }
+  const double &operator()(int r, int c) const {
+    return data.at((r * c) + colum);
+  }
 
   int get_rows();
   int get_colum();
