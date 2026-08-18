@@ -17,7 +17,6 @@ vector<vector<T>> gemm(const vector<vector<T>> &matrix_a,
         "ERROR: Matrices are not compatible for multiplication\n");
   } // Check if no. of colums of matrix A = no. of rows in matrix B
 
-
   // Must allocate memory to it (fill with zeros)
   vector<vector<T>> final_matrix(matrix_a.size(),
                                  vector<T>(matrix_b[0].size(), 0));
