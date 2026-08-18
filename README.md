@@ -27,3 +27,10 @@ Not only is this implementation a time complexity of O(n^3) which makes it ineff
 The solution is to flatten the grid, since the computers ram is not like a grid but rather a long continuos line of bytes. Row 0 comes first, imediantly followed by Row 1 and then Row 2. To trick the C++ code into treating this like a 1D line like a 2D grid we use a simple math formula to calculate exactly where a (row, col) coordinate lands in the 1D line:
 
 **index = (row * TOTAL_COLUMNS) + col**
+
+
+## Implementation 2:
+
+![Moved to a 1D matrix to "trick" the cpu in a way](images/implementation2.png)
+
+Now it is better for the cpu as the data is stored contiguosly instead of scattered accross the heap.
