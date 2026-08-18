@@ -29,7 +29,5 @@ int main() {
   B(2, 0) = 11;
   B(2, 1) = 12;
 
-  print_matrix(B);
-
   return 0;
 }

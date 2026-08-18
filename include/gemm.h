@@ -1,34 +1,28 @@
 #pragma once
 
+#include "matrix.h"
 #include <iostream>
 #include <stdexcept>
-#include <vector>
 // #include <concepts>
 
-using std::cout;
-using std::vector;
-
 template <typename T>
-vector<vector<T>> gemm(const vector<vector<T>> &matrix_a,
-                       const vector<vector<T>> &matrix_b) {
+Matrix gemm(const Matrix &matrix_a, const Matrix &matrix_b) {
 
-  if ((matrix_a[0].size() != matrix_b.size())) {
+  if (matrix_a.get_colum() != matrix_b.get_rows()) {
     throw std::invalid_argument(
         "ERROR: Matrices are not compatible for multiplication\n");
   } // Check if no. of colums of matrix A = no. of rows in matrix B
 
-  // Must allocate memory to it (fill with zeros)
-  vector<vector<T>> final_matrix(matrix_a.size(),
-                                 vector<T>(matrix_b[0].size(), 0));
+  Matrix final_matrix(matrix_a.get_rows(), matrix_b.get_colum());
 
-  for (std::size_t i{0u}; i < matrix_a.size(); ++i) { // number of rows in A
-    for (std::size_t j{0u}; j < matrix_b[0].size();
+  for (int i{0u}; i < matrix_a.get_rows(); ++i) { // number of rows in A
+    for (int j{0u}; j < matrix_b.get_colum();
          ++j) { // number of columns in B
       T running_total{0};
-      for (std::size_t k{0u}; k < matrix_a[0].size(); ++k) {
-        running_total += matrix_a[i][k] * matrix_b[k][j];
+      for (int k{0u}; k < matrix_a.get_colum(); ++k) {
+        running_total += matrix_a(i, k) * matrix_b(k, j);
       }
-      final_matrix[i][j] = running_total;
+      final_matrix(i, j) = running_total;
     }
   }
 
