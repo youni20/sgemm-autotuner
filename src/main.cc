@@ -3,16 +3,6 @@
 #include <chrono>
 #include <iostream>
 
-void print_matrix(const Matrix &x) {
-  for (int row{0u}; row < x.get_rows(); ++row) {
-    std::cout << "{ ";
-    for (int colum{0u}; colum < x.get_colum(); ++colum) {
-      std::cout << x(row, colum) << " ";
-    }
-    std::cout << "}" << std::endl;
-  }
-}
-
 int main() {
   Matrix A{2, 3}; // 2x3
   A(0, 0) = 1;
@@ -36,7 +26,7 @@ int main() {
 
   auto duration =
       duration_cast<std::chrono::microseconds>(end_time - start_time);
-  print_matrix(C);
+  C.print_matrix();
 
   std::cout << "\nExecution Time: " << duration.count() << " microseconds"
             << std::endl;

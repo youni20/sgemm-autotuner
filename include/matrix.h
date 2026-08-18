@@ -22,4 +22,6 @@ public:
   int get_rows() const;
   int get_colum() const;
   int get_size() const;
+
+  void print_matrix();
 };
