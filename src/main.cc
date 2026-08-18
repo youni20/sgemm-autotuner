@@ -1,7 +1,7 @@
 #include "gemm.h"
 #include "matrix.h"
+#include <chrono>
 #include <iostream>
-// #include <chrono>
 
 void print_matrix(const Matrix &x) {
   for (int row{0u}; row < x.get_rows(); ++row) {
@@ -30,8 +30,16 @@ int main() {
   B(2, 0) = 11;
   B(2, 1) = 12;
 
+  auto start_time = std::chrono::high_resolution_clock::now();
   Matrix C = gemm(A, B);
+  auto end_time = std::chrono::high_resolution_clock::now();
+
+  auto duration =
+      duration_cast<std::chrono::microseconds>(end_time - start_time);
   print_matrix(C);
+
+  std::cout << "\nExecution Time: " << duration.count() << " microseconds"
+            << std::endl;
 
   return 0;
 }
