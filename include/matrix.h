@@ -24,4 +24,5 @@ public:
   int get_size() const;
 
   void print_matrix();
+  void randomize();
 };

@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include <cstdlib>
 #include <iostream>
 
 int Matrix::get_rows() const { return row; };
@@ -12,5 +13,13 @@ void Matrix::print_matrix() {
       std::cout << this->data[row * this->get_colum() + colum] << " ";
     }
     std::cout << "}" << std::endl;
+  }
+}
+
+void Matrix::randomize() {
+  // srand(time(NULL));
+  for (std::size_t i{0u}; i < data.size(); ++i) {
+    int x = (rand() % 100) + 1; // Generate a random number between 1 - 100
+    data[i] = x;                // Place the random number to the vector
   }
 }
