@@ -33,4 +33,10 @@ The solution is to flatten the grid, since the computers ram is not like a grid 
 
 ![Moved to a 1D matrix to "trick" the cpu in a way](images/implementation2.png)
 
-Now it is better for the cpu as the data is stored contiguosly instead of scattered accross the heap.
+Now it is better for the cpu as the data is stored contiguosly instead of scattered accross the heap. I have now implemented the baseline single-precision matrix multiplication (gemm). 
+
+For a matrix size of 1024x1024, the unoptimized triple-loop prototype running on the contiguous 1D layout completed in around 5x10^6 microseconds accross multiple runs.
+
+While storing the data contiguously avoids pointer chasing and cache misses compared to a std::vector<std::vector<float>>, this naive O(n^3) implementation still suffers from poor cache reuse and lacks vectorization. Future iterations will introduce tiling, SIMD, and multithreading to drastically improve performance.
+
+![Result of running the program at this stage on 2 1024x1024 matrices](images/implementation3.png)

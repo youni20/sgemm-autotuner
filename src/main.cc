@@ -13,16 +13,26 @@ int main() {
   A.randomize();
   B.randomize();
 
+  int repetitions{0};
+
   std::cout << "Execution Began..." << std::flush;
+
+  while(repetitions!=3){  // Repeat a few times to get an avg time
+  std::cout << "Execution " << repetitions + 1 << std::endl;
+
   auto start_time = std::chrono::high_resolution_clock::now();
 
   Matrix C = gemm(A, B);
 
   auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration =
-      duration_cast<std::chrono::microseconds>(end_time - start_time);
-  std::cout << "\nExecution Time: " << duration.count() << " microseconds"
+
+  auto duration = duration_cast<std::chrono::microseconds>(end_time - start_time);
+    std::cout << "\nExecution Time: " << duration.count() << " microseconds"
             << std::endl;
+
+    ++repetitions;
+
+  }
 
   return 0;
 }
