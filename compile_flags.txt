@@ -2,6 +2,7 @@
 -std=c++20
 -Wall
 -Wextra
--O2
+-O3
+-march=native
 
 -Iinclude

@@ -35,8 +35,10 @@ The solution is to flatten the grid, since the computers ram is not like a grid 
 
 Now it is better for the cpu as the data is stored contiguosly instead of scattered accross the heap.
 
-The baseline execution time averages approximately $5.6$ seconds per run. This high latency highlights the inefficiency of the naive $O(n^3)$ algorithm and confirms the urgent need for cache blocking, vectorization, and parallelization.
-
 ![The Results after running 3 tests with the same values and matrices](images/implementation3.png)
 
-These results serve as the baseline for evaluating subsequent optimization strategies. Future iterations will compare these metrics against OpenBLAS to quantify the performance gains achieved through architectural refinements.
+To ensure reliable metrics, benchmarks are executed in a controlled environment. The CPU governor is locked to 'performance' mode to prevent thermal or battery-saving throttling. The testing logic is built directly into the C++ executable, running 3 consecutive iterations to account for L3 cache warming.Compiler: Clang++ with -O3 and -march=native optimization flagsMatrix Dimensions: 1024x1024Data Type: Double-Precision (double)Algorithm: Naive O(n^3) contiguous memory traversalResults: The average execution time stabilized around 3.15 seconds. 
+
+Interestingly, aggressive compiler optimizations (-O3) provided erratic results and minor regressions compared to standard optimizations (-O2).
+
+This occurs because the naive algorithm is heavily memory-bound; aggressive loop unrolling exacerbates the memory wall and causes cache thrashing. This confirms that compiler flags alone are insufficient—structural algorithmic changes like Cache Blocking (Tiling) are mandatory to maximize L1/L2 cache efficiency.
