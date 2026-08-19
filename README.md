@@ -1,44 +1,87 @@
-# Single-Precision Matrix Multiplication
+# Single-Precision GEMM in C++
 
-This project is an implementation of a Single-Precision matrix multiplication in C++, taking it from a simple triple-loop implementation (with a time complexity of O(n^3)) to a version that approaches a more practical peak performance off the CPU.
+An implementation of single-precision general matrix multiplication (GEMM) in C++, progressing from a naive triple-loop baseline towards a version that approaches practical peak CPU performance. Once the hand-optimised path is complete, an autotuner will search the optimisation parameter space empirically rather than relying on hand-picked constants. Every stage is benchmarked against OpenBLAS as an external reference, with the reasoning behind each optimisation documented alongside the resulting numbers.
 
-Once thats complete an autotuner was then implemented that searches the optimisation parameter space based of data rather than by hand-picked constants. The goal is to benchmark it against OpenBLAS as an external reference at every stage. I also aim to give the reasoning behind each optimisation and not just the resulting numbers, as this aims to be a high performance computing project. I also document my findings and progress throughout as a implementation.
+This is a high-performance computing project in the literal sense: the goal is not just a working GEMM, but a record of *why* each transformation improves performance, backed by measurement.
 
-Lastly this is an opensource project under the MIT LICENSE so any contributions and further work is more than welcome!
+Open source under the MIT licence. Contributions and further work are welcome.
 
 ---
 
-## First Implementation:
+## Roadmap
 
-Here is my first implementation of the gemm process which works but obviously isnt optimised at the moment.
-<br>
-![First Prototype](images/implementation1.png)
-<br>
+- [x] Naive triple-loop baseline (`vector<vector<T>>`)
+- [x] Flatten to contiguous 1D row-major storage
+- [ ] Cache blocking / tiling
+- [ ] SIMD vectorisation (AVX2/AVX-512)
+- [ ] Multithreading
+- [ ] Autotuner for block size and tiling parameters
+- [ ] Benchmark against OpenBLAS at every stage
 
-This implementation a time complexity of O(n^3) which makes it inefficient but it also uses a vector within a vector. My initial thoughts were considering the fact this is matrix multiplication im attempting to implement it would only make sense for the factors being multiplied to be 2D matrices however upon further research I found that this is terrible for the cpu for various reasons.
+---
 
-1. With "vector<vector<int>>" the issue is that the outer vector just holds memory addresses, and each of these addresses points to an inner vector representing a row, which is located somewhere else within the heap memory.
+## Implementation Log
 
-2. Because of this when the cpu attempts to perform the matrix multiplication it has to constatly look around to different memory locations instead of a contiguos location to find the next row. This is known as pointer chasing. This causes cache misses which cause the CPU to stall while it waits for data from RAM destroying the performance.
+### v1: Naive Triple-Loop, `vector<vector<T>>`
 
-3. To solve this the cpu needs all the matrix data laid out in one single continuos block of memory, allowing the hardware to predict what data will be needed next (prefetching) and process multiple numbers at the same time (SIMD Vectorization).
+![First prototype](images/implementation1.png)
 
-#### Row Major Trick
-The solution is to flatten the grid, since the computers ram is not like a grid but rather a long continuos line of bytes. Row 0 comes first, imediantly followed by Row 1 and then Row 2. To trick the C++ code into treating this like a 1D line like a 2D grid we use a simple math formula to calculate exactly where a (row, col) coordinate lands in the 1D line:
+The first working implementation, with the expected $O(n^3)$ time complexity. Matrices are represented as `vector<vector<T>>`, which seemed like the natural choice for a 2D mathematical object but turns out to be a poor fit for CPU performance, for a few reasons:
 
-**index = (row * TOTAL_COLUMNS) + col**
+1. **No contiguity.** A `vector<vector<T>>` is an outer vector of pointers, where each pointer refers to an inner vector (a row) allocated independently somewhere on the heap.
+2. **Pointer chasing.** To reach a given row, the CPU must first dereference the outer vector, then follow that pointer to a separate heap allocation. Rows are not guaranteed to be adjacent in memory, or even nearby.
+3. **Cache misses.** This scattered layout defeats the CPU's prefetcher and produces cache misses on nearly every row access, stalling the pipeline while data is fetched from RAM.
 
+The fix is to give the CPU one contiguous block of memory to work with, which enables hardware prefetching and makes SIMD vectorisation possible in later stages.
 
-## Implementation 2:
+### v2: Flattened to 1D, Row-Major Order
 
-![Moved to a 1D matrix to "trick" the cpu in a way](images/implementation2.png)
+![Flattened to a 1D contiguous buffer](images/implementation2.png)
 
-Now it is better for the cpu as the data is stored contiguosly instead of scattered accross the heap.
+RAM is not a grid, it is a single contiguous line of bytes. The matrix is flattened accordingly: row 0 is followed immediately by row 1, then row 2, and so on. A `(row, col)` coordinate is mapped onto this 1D buffer with the standard row-major indexing formula:
 
-![The Results after running 3 tests with the same values and matrices](images/implementation3.png)
+$$
+\text{index} = (\text{row} \times \text{total\_columns}) + \text{col}
+$$
 
-To ensure reliable metrics, benchmarks are executed in a controlled environment. The CPU governor is locked to 'performance' mode to prevent thermal or battery-saving throttling. The testing logic is built directly into the C++ executable, running 3 consecutive iterations to account for L3 cache warming.Compiler: Clang++ with -O3 and -march=native optimization flagsMatrix Dimensions: 1024x1024Data Type: Double-Precision (double)Algorithm: Naive O(n^3) contiguous memory traversalResults: The average execution time stabilized around 3 seconds. 
+This keeps the entire matrix in one contiguous allocation, removing the pointer chasing from v1.
 
-Interestingly, aggressive compiler optimizations (-O3) provided erratic results and minor regressions compared to standard optimizations (-O2).
+---
 
-This occurs because the naive algorithm is heavily memory-bound; aggressive loop unrolling exacerbates the memory wall and causes cache thrashing. This confirms that compiler flags alone are insufficient—structural algorithmic changes like Cache Blocking (Tiling) are mandatory to maximize L1/L2 cache efficiency.
+## Benchmark Methodology
+
+Wall-clock execution time alone is a poor performance metric: it is sensitive to CPU clock fluctuations, thermal throttling, and hardware differences across machines. To get a hardware-agnostic figure, throughput is reported in **GFLOP/s** (giga floating-point operations per second) instead.
+
+For an $N \times N \times N$ matrix multiplication, the total floating-point operation count is:
+
+$$
+\text{FLOPs} = 2N^3
+$$
+
+For $N = 1024$, this is approximately 2.15 billion floating-point operations per run.
+
+## Results
+
+![Three benchmark runs on identical input matrices](images/implementation3.png)
+
+Baseline (v2, naive loop order, contiguous 1D storage), compiled with `-O3 -march=native`, 1024×1024 matrices, three runs:
+
+| Run | Time (µs) | Throughput (GFLOP/s) |
+|-----|-----------|-----------------------|
+| 1   | 3,515,659 | 0.611 |
+| 2   | 3,482,995 | 0.617 |
+| 3   | 3,497,846 | 0.614 |
+
+**Average: ~3.50 s, ~0.61 GFLOP/s.**
+
+### Analysis: the memory wall
+
+A single modern CPU core is capable of tens to hundreds of GFLOP/s. Achieving only 0.61 GFLOP/s here is not a fluke, it is a direct consequence of memory access pattern rather than raw compute capability.
+
+Contiguous storage alone removes pointer chasing but does not fix the underlying issue: the naive `i, j, k` loop order accesses matrix B column-wise in the innermost loop, striding through memory with poor spatial locality. This evicts useful data from L1/L2 cache long before it can be reused, so the compute units sit idle waiting on data from main memory far more often than they perform useful work. This is a **memory-bound**, not compute-bound, workload, and it demonstrates that compiler flags alone (`-O3`, `-march=native`) cannot fix an algorithm whose loop structure is fighting the cache hierarchy. The next stages (blocking/tiling, then vectorisation) address this directly.
+
+---
+
+## License
+
+MIT. See `LICENSE`.
