@@ -30,10 +30,21 @@ int main()
         auto end_time = std::chrono::high_resolution_clock::now();
 
         auto duration = duration_cast<std::chrono::microseconds>(end_time - start_time);
-        std::cout << duration.count() << " microseconds"
-                  << std::endl;
 
         ++repetitions;
+
+        // GFLOP Calculation
+        double seconds = duration.count() / 1e6;
+        double total_flops = 2.0 * size * size * size;
+
+        double giga_flops = total_flops / 1e9;
+        double gflops_per_second = giga_flops / seconds;
+
+        std::cout << duration.count()
+                  << " microseconds | Performance: "
+                  << gflops_per_second
+                  << " GFLOP/s"
+                  << std::endl;
     }
 
     std::cout << "Execution Complete" << std::endl;
