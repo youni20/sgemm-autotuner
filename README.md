@@ -37,7 +37,7 @@ Now it is better for the cpu as the data is stored contiguosly instead of scatte
 
 ![The Results after running 3 tests with the same values and matrices](images/implementation3.png)
 
-To ensure reliable metrics, benchmarks are executed in a controlled environment. The CPU governor is locked to 'performance' mode to prevent thermal or battery-saving throttling. The testing logic is built directly into the C++ executable, running 3 consecutive iterations to account for L3 cache warming.Compiler: Clang++ with -O3 and -march=native optimization flagsMatrix Dimensions: 1024x1024Data Type: Double-Precision (double)Algorithm: Naive O(n^3) contiguous memory traversalResults: The average execution time stabilized around 3.15 seconds. 
+To ensure reliable metrics, benchmarks are executed in a controlled environment. The CPU governor is locked to 'performance' mode to prevent thermal or battery-saving throttling. The testing logic is built directly into the C++ executable, running 3 consecutive iterations to account for L3 cache warming.Compiler: Clang++ with -O3 and -march=native optimization flagsMatrix Dimensions: 1024x1024Data Type: Double-Precision (double)Algorithm: Naive O(n^3) contiguous memory traversalResults: The average execution time stabilized around 3 seconds. 
 
 Interestingly, aggressive compiler optimizations (-O3) provided erratic results and minor regressions compared to standard optimizations (-O2).
 
