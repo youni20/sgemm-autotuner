@@ -2,6 +2,39 @@
 #include <stdexcept>
 // #include <concepts>
 
+
+Matrix gemm(const Matrix &matrix_a, const Matrix &matrix_b) {
+  if (matrix_a.get_colum() != matrix_b.get_rows()) {
+    throw std::invalid_argument(
+        "ERROR: Matrices are not compatible for multiplication\n");
+  }
+
+  // Initialize the output matrix with zeros
+  Matrix final_matrix(matrix_a.get_rows(), matrix_b.get_colum(), 0.0f);
+
+  // 1. Outer loop: Iterate through the rows of Matrix A
+  for (int i = 0; i < matrix_a.get_rows(); ++i) {
+
+    // 2. Middle loop: Iterate through the columns of Matrix A (and rows of B)
+    for (int k = 0; k < matrix_a.get_colum(); ++k) {
+
+      // Cache this value because it doesn't change at all during the 'j' loop
+      float a_ik = matrix_a(i, k);
+
+      // 3. Inner loop: Iterate through the columns of Matrix B
+      for (int j = 0; j < matrix_b.get_colum(); ++j) {
+
+        // Both final_matrix and matrix_b are now stepping forward
+        // exactly 1 memory address at a time. The hardware prefetcher will love this!
+        final_matrix(i, j) += a_ik * matrix_b(k, j);
+      }
+    }
+  }
+  return final_matrix;
+}
+
+
+/*
 Matrix gemm(const Matrix& matrix_a, const Matrix& matrix_b)
 {
     if (matrix_a.get_colum() != matrix_b.get_rows()) {
@@ -23,3 +56,4 @@ Matrix gemm(const Matrix& matrix_a, const Matrix& matrix_b)
 
     return final_matrix;
 };
+*/
