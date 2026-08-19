@@ -5,7 +5,7 @@ class Matrix {
 private:
     int row;
     int colum;
-    std::vector<double> data;
+    std::vector<float> data;
 
 public:
     //  Matrix Constructor
@@ -14,9 +14,9 @@ public:
         , colum(colum)
         , data(static_cast<std::size_t>(row * colum), initial_value) { };
 
-    double& operator()(int r, int c) { return data.at((r * colum) + c); };
+    float& operator()(int r, int c) { return data.at((r * colum) + c); };
 
-    const double& operator()(int r, int c) const
+    const float& operator()(int r, int c) const
     {
         return data.at((r * colum) + c);
     };
