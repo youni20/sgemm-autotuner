@@ -1,5 +1,4 @@
 #include "gemm.h"
-
 #include <stdexcept>
 // #include <concepts>
 
@@ -14,7 +13,7 @@ Matrix gemm(const Matrix& matrix_a, const Matrix& matrix_b)
 
     for (int i { 0u }; i < matrix_a.get_rows(); ++i) { // number of rows in A
         for (int j { 0u }; j < matrix_b.get_colum(); ++j) { // number of columns in B
-            int running_total { 0 };
+            double running_total { 0.0 };
             for (int k { 0u }; k < matrix_a.get_colum(); ++k) {
                 running_total += matrix_a(i, k) * matrix_b(k, j);
             }

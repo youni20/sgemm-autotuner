@@ -23,6 +23,7 @@ void Matrix::randomize()
     // srand(time(NULL));
     for (std::size_t i { 0u }; i < data.size(); ++i) {
         int x = (rand() % 100) + 1; // Generate a random number between 1 - 100
+        // std::cout << x << std::endl;
         data[i] = x; // Place the random number to the vector
     }
 }

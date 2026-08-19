@@ -7,7 +7,7 @@
 int main()
 {
     srand(time(NULL)); // Needed here for the randomize function
-    int size = 1024;
+    int size { 1024 };
 
     Matrix A { size, size }; // Increased the matrix size to 1024x1024
     Matrix B { size, size }; // Since math works correct now we make it faster
