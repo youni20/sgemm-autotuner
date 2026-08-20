@@ -7,6 +7,5 @@
 -mavx2
 -mfma
 -fopenmp
--lopenblas
 
 -Iinclude

@@ -1,10 +1,11 @@
-#include <iostream>
-#include <vector>
+#include <cblas.h> // The OpenBLAS header
 #include <chrono>
 #include <cstdlib>
-#include <cblas.h> // The OpenBLAS header
+#include <iostream>
+#include <vector>
 
-int main() {
+int main()
+{
     int size = 1024;
 
     // Allocate contiguous 1D memory for the matrices
@@ -28,12 +29,12 @@ int main() {
         // The official SGEMM function
         // SGEMM = Single-Precision General Matrix Multiplication
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                    size, size, size,   // M, N, K dimensions
-                    1.0f,               // Alpha (multiplier for A*B)
-                    A.data(), size,     // Matrix A and its row stride
-                    B.data(), size,     // Matrix B and its row stride
-                    0.0f,               // Beta (multiplier for C)
-                    C.data(), size);    // Matrix C and its row stride
+            size, size, size, // M, N, K dimensions
+            1.0f, // Alpha (multiplier for A*B)
+            A.data(), size, // Matrix A and its row stride
+            B.data(), size, // Matrix B and its row stride
+            0.0f, // Beta (multiplier for C)
+            C.data(), size); // Matrix C and its row stride
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
