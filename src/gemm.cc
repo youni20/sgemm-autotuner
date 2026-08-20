@@ -14,9 +14,6 @@ Matrix gemm(const Matrix& matrix_a, const Matrix& matrix_b)
     // Initialize the output matrix with zeros
     Matrix final_matrix(matrix_a.get_rows(), matrix_b.get_colum(), 0.0f);
 
-    // Set the block size so we can now counter Cache Blocking
-    const int BLOCK_SIZE { 64 };
-
 // Instead of stepping by 1, these loops jump forward by BLOCK_SIZE
 // Tell the compilers to split this loop accross all available cpu cores
 #pragma omp parallel for

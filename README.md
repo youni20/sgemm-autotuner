@@ -176,6 +176,10 @@ An 8-wide FMA unit operating on data already resident in L1 should not yield a ~
 
 Profile with Nsight/`perf` before the next stage (multithreading) is layered on top; a compute-bound explanation should show near-zero L1 miss rate and high port utilisation on the FMA unit, and if it doesn't, vectorisation is not actually the limiting factor here.
 
+v6: Multithreading (OpenMP)The Problem:While AVX2 intrinsics maximized the throughput of a single CPU core, modern processors feature multiple physical cores. Running a highly optimized single-threaded loop leaves the majority of the CPU's compute capacity completely idle.The Fix:The outermost i_block loop was parallelized using OpenMP (#pragma omp parallel for). Because the algorithm is already structured into cache blocks, each thread can be safely assigned an independent horizontal chunk of Matrix A and final_matrix. This guarantees that no two threads will ever attempt to write to the same memory address simultaneously, eliminating the need for expensive locks or atomic operations.Results (SGEMM):Concurrency: OpenMP (All available CPU cores)Average Execution Time: ~0.045 seconds (45,829 µs)Throughput: ~46.86 GFLOP/sConclusion:Multithreading unlocked the full compute potential of the CPU hardware. Distributing the tiled, vectorized workload across all cores yielded a ~4.5x speedup over the single-threaded AVX2 implementation. Compared to the original naive $O(N^3)$ baseline (~0.61 GFLOP/s), this architecture is now ~76x faster.
+
+![results](images/implementation7.png)
+
 ---
 
 ## License
