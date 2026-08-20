@@ -194,6 +194,32 @@ Block size 64 was selected as the operating point.
 
 The mean at block size 64 (41.67 GFLOP/s) and block size 128 (41.71 GFLOP/s) differ by 0.04 GFLOP/s, well inside the run-to-run spread of either (4.64 and 1.47 GFLOP/s respectively). The single best run at 64 (44.42 GFLOP/s) is the number quoted in conclusions elsewhere, but it is the maximum of three samples, not a stable estimate, and 128 is in fact the more consistent of the two (tighter range, comparable mean). Three runs is not enough to resolve this. Before treating 64 as final: increase to at least 10–15 runs per block size, and compare on median and spread rather than best-of-three, per the general benchmarking discipline used elsewhere in this log.
 
+
+### Final Benchmark: Custom GEMM vs. OpenBLAS
+
+The goal of this comparison is to place the fully optimised, hand-written C++ SGEMM (v7, autotuned to block size 64) against OpenBLAS, the reference production BLAS used underneath frameworks such as PyTorch and NumPy, on identical 1024×1024 single-precision matrices.
+
+#### Results
+
+![Run](images/final_imp.png)
+
+Three runs each:
+
+| Implementation | Run 1 (GFLOP/s) | Run 2 (GFLOP/s) | Run 3 (GFLOP/s) | Mean |
+|---|---|---|---|---|
+| Custom C++ (v7, block 64) | 39.84 | 40.58 | 44.53 | 41.65 |
+| OpenBLAS | 326.17 | 488.73 | 497.22 | 437.37 |
+
+OpenBLAS outperforms the custom kernel by **~10.5×** at the mean. Against the original v2 baseline (0.61 GFLOP/s), the custom kernel's 41.65 GFLOP/s represents a **~68×** improvement from contiguous storage, loop reordering, tiling, AVX2/FMA, OpenMP and autotuning combined.
+
+#### Analysis
+
+The gap is not a failure of the approach so far, it is the expected shape of the curve. Compiler-emitted AVX2 from source-level intrinsics gets a single core to double digits of GFLOP/s; OpenBLAS's kernels are hand-written in assembly with multi-level blocking across L1, L2 and L3, explicit register tiling tuned per microarchitecture, and packing routines that reformat operands ahead of the matmul to guarantee unit-stride access at every cache level simultaneously, none of which this project has implemented. The 10.5× gap is roughly consistent with the difference between single-level L1 blocking and a full multi-level blocking hierarchy plus hand-scheduled register tiling.
+
+#### Caveat: the OpenBLAS numbers are not stable across runs
+
+Run 1 (326.17 GFLOP/s) is 33% below runs 2 and 3 (488.73, 497.22), almost certainly a cold-cache or thread-spin-up effect on the first invocation rather than a representative sample. Averaging all three understates OpenBLAS's steady-state throughput; the 488–497 GFLOP/s pair is the more honest figure, which would put the true gap closer to **~11.7×** rather than 10.5×. As with v7, three runs is too few to separate a genuine outlier from real variance, more repetitions with the first run either discarded or treated as a separate warm-up measurement would resolve this before quoting a final number.
+
 ---
 
 ## License
