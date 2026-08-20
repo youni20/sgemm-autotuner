@@ -4,5 +4,7 @@
 -Wextra
 -O3
 -march=native
+-mavx2
+-mfma
 
 -Iinclude

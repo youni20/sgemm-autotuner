@@ -1,5 +1,6 @@
 #include "gemm.h"
 #include <algorithm>
+#include <immintrin.h> // REQUIRED: Hardware intrinsics for AVX2
 #include <stdexcept>
 // #include <concepts>
 
@@ -23,7 +24,6 @@ Matrix gemm(const Matrix& matrix_a, const Matrix& matrix_b)
 
                 // We use std::min to prevent going out of bounds if the matrix size
                 // if not perfectly divisible by 64 (e.g., a 1000x1000 matrix).
-
                 int i_end = std::min(i_block + BLOCK_SIZE, matrix_a.get_rows());
                 int k_end = std::min(k_block + BLOCK_SIZE, matrix_a.get_colum());
                 int j_end = std::min(j_block + BLOCK_SIZE, matrix_b.get_colum());
@@ -37,11 +37,33 @@ Matrix gemm(const Matrix& matrix_a, const Matrix& matrix_b)
                         // Cache this value because it doesn't change at all during the 'j' loop
                         float a_ik = matrix_a(i, k);
 
-                        // 3. Inner loop: Iterate through the columns of Matrix B
-                        for (int j = j_block; j < j_end; ++j) {
+                        // NEW: Broadcast a_ik into an AVX register (8 copies of the same number)
+                        __m256 a_reg = _mm256_set1_ps(a_ik);
 
-                            // Both final_matrix and matrix_b are now stepping forward
-                            // exactly 1 memory address at a time. The hardware prefetcher will love this!
+                        int j = j_block;
+
+                        // 3. Inner loop: Iterate through the columns of Matrix B in chunks of 8!
+                        for (; j <= j_end - 8; j += 8) {
+
+                            // Calculate the flat 1D memory index for the raw pointers
+                            int c_index = i * final_matrix.get_colum() + j;
+                            int b_index = k * matrix_b.get_colum() + j;
+
+                            // Load 8 floats from Matrix C and Matrix B
+                            __m256 c_reg = _mm256_load_ps(final_matrix.get_data() + c_index);
+                            __m256 b_reg = _mm256_load_ps(matrix_b.get_data() + b_index);
+
+                            // Execute 8 Fused Multiply-Adds in one single clock cycle
+                            c_reg = _mm256_fmadd_ps(a_reg, b_reg, c_reg);
+
+                            // Store the 8 results back into Matrix C
+                            _mm256_store_ps(final_matrix.get_data() + c_index, c_reg);
+                        }
+
+                        // 4. Scalar Cleanup Loop
+                        // If the block size or matrix isn't a perfect multiple of 8,
+                        // this calculates the leftover edge elements 1 by 1.
+                        for (; j < j_end; ++j) {
                             final_matrix(i, j) += a_ik * matrix_b(k, j);
                         }
                     }
