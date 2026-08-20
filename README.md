@@ -12,7 +12,7 @@ Open source under the MIT licence. Contributions and further work are welcome.
 
 - [x] Naive triple-loop baseline (`vector<vector<T>>`)
 - [x] Flatten to contiguous 1D row-major storage
-- [ ] Cache blocking / tiling
+- [x] Cache blocking / tiling
 - [ ] SIMD vectorisation (AVX2/AVX-512)
 - [ ] Multithreading
 - [ ] Autotuner for block size and tiling parameters
@@ -122,10 +122,26 @@ Note the accumulation pattern also changed: v2 computed a full dot product into 
 
 This result cannot be decomposed into "how much did `float` contribute" versus "how much did loop reordering contribute." The two changes were shipped together. Rigorous attribution requires an intermediate measurement:
 
-- [ ] Benchmark `float` storage with the **original** `i, j, k` loop order, isolating the type change
-- [ ] Benchmark `double` storage with the **new** `i, k, j` loop order, isolating the reordering
+- [x] Benchmark `float` storage with the **original** `i, j, k` loop order, isolating the type change
+- [x] Benchmark `double` storage with the **new** `i, k, j` loop order, isolating the reordering
 
 Without this ablation, "4.6×" is a bundled number, not evidence for either optimisation on its own. Given that `i, k, j` eliminates a column-strided access entirely while the `float`-vs-`double` change only affects cache line and register packing density, the loop reordering is almost certainly the dominant term, but "almost certainly" is not a measurement. Isolate before the next stage adds a third variable (SIMD) on top of two already-unattributed ones.
+
+### v4: Cache Blocking (Tiling)
+
+Loop reordering (v3) fixed spatial locality in the innermost loop but left temporal locality unaddressed at the level of the full matrix. For $N = 1024$, a row of `matrix_b` is $1024 \times 4\ \text{bytes} = 4\ \text{KiB}$, and the working set touched across one full sweep of the `k` loop exceeds L1 capacity well before the sweep completes. Data brought into L1 early in the `k, j` traversal is evicted before `i` advances far enough to reuse it, so the CPU is still making repeated round trips to L2/L3 for data it has already seen.
+
+The fix is to restructure the computation into six nested loops instead of three: three outer loops iterate over block coordinates, and three inner loops perform the standard `i, k, j` multiplication strictly within the bounds of the current block. Matrices A, B and the accumulator are partitioned into $64 \times 64$ sub-blocks, sized so that the active tile of each operand fits in L1 simultaneously. Every multiply-accumulate for a given block is exhausted before the block is evicted, so each cache line loaded is reused across the full block rather than once.
+
+#### Results
+
+![1024×1024, -O3 -march=native, block size 64×64](images/implementation4.png)
+
+This is a **~3.4× improvement** over v3 (2.82 GFLOP/s) and a **~15.6× improvement** over the v2 baseline (0.61 GFLOP/s).
+
+#### Caveat: block size was not swept
+
+64×64 was chosen by hand, not derived from the target machine's actual L1 capacity or associativity. The correct block size is a function of cache line size, L1 capacity, and how many of A's block, B's block and the accumulator's block must be simultaneously resident, none of which was measured here. Treat 64 as a placeholder pending the autotuner stage on the roadmap, which should sweep block size empirically against measured throughput rather than have it fixed by assumption.
 
 ---
 
