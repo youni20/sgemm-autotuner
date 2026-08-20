@@ -13,7 +13,7 @@ Open source under the MIT licence. Contributions and further work are welcome.
 - [x] Naive triple-loop baseline (`vector<vector<T>>`)
 - [x] Flatten to contiguous 1D row-major storage
 - [x] Cache blocking / tiling
-- [ ] SIMD vectorisation (AVX2/AVX-512)
+- [x] SIMD vectorisation (AVX2/AVX-512)
 - [ ] Multithreading
 - [ ] Autotuner for block size and tiling parameters
 - [ ] Benchmark against OpenBLAS at every stage
@@ -142,6 +142,39 @@ This is a **~3.4× improvement** over v3 (2.82 GFLOP/s) and a **~15.6× improvem
 #### Caveat: block size was not swept
 
 64×64 was chosen by hand, not derived from the target machine's actual L1 capacity or associativity. The correct block size is a function of cache line size, L1 capacity, and how many of A's block, B's block and the accumulator's block must be simultaneously resident, none of which was measured here. Treat 64 as a placeholder pending the autotuner stage on the roadmap, which should sweep block size empirically against measured throughput rather than have it fixed by assumption.
+
+
+### v5: SIMD Vectorisation (AVX2 + FMA)
+
+Cache blocking (v4) resolved the memory-bound behaviour of the workload, shifting the bottleneck to the compute units themselves. Scalar `+` and `*` map to one float operation per instruction, so even with data resident in L1 the core is executing far below its theoretical throughput.
+
+**The fix.** Two changes were made together:
+
+1. **32-byte aligned storage.** `Matrix` now allocates through a custom `AlignedAllocator` backed by `std::aligned_alloc`, guaranteeing 32-byte alignment. This is a hard requirement for `_mm256_load_ps`/`_mm256_store_ps`; unaligned pointers passed to the aligned load/store variants fault rather than degrade gracefully.
+2. **Manual AVX2/FMA intrinsics in the innermost loop**, replacing the scalar `i, k, j` body:
+
+   - `_mm256_set1_ps` broadcasts `matrix_a(i, k)` into all eight lanes of a 256-bit register.
+   - `_mm256_load_ps` reads eight contiguous `matrix_b` floats per iteration instead of one.
+   - `_mm256_fmadd_ps` performs eight multiply-accumulates in a single instruction.
+   - `_mm256_store_ps` writes the eight-wide result back.
+
+This replaces eight scalar iterations of the innermost `j` loop with one vector iteration, within each 64×64 block established in v4.
+
+#### Results
+
+![1024×1024, `-O3 -march=native`, block size 64×64, three runs](images/implementation6.png)
+
+**Average: ~0.213 s, ~10.08 GFLOP/s**, a **~1.06× improvement** over v4 (9.50 GFLOP/s).
+
+#### Caveat: the gain is far below the 8× the SIMD width implies
+
+An 8-wide FMA unit operating on data already resident in L1 should not yield a ~6% improvement. Candidate explanations, none confirmed:
+
+- [ ] `-march=native` under `-O3` may already have auto-vectorised the v4 scalar loop, making the manual intrinsics redundant rather than additive. Compare against the v4 disassembly (`objdump -d` / Compiler Explorer) to check for existing `vfmadd` instructions before attributing any of this gain to the intrinsics.
+- [ ] The 64×64 block size was tuned (informally, in v4) around scalar access patterns, not around register-blocking for 8-wide FMA. The block dimensions may now be suboptimal for the vector width and need re-deriving jointly, not left as an inherited constant.
+- [ ] Store-side overhead: `_mm256_store_ps` on the accumulator every inner iteration re-introduces the same read-modify-write traffic on `final_matrix` flagged as an unmeasured variable back in v3, now happening eight floats at a time instead of one.
+
+Profile with Nsight/`perf` before the next stage (multithreading) is layered on top; a compute-bound explanation should show near-zero L1 miss rate and high port utilisation on the FMA unit, and if it doesn't, vectorisation is not actually the limiting factor here.
 
 ---
 
