@@ -1,6 +1,6 @@
 # Single-Precision GEMM in C++
 
-An implementation of single-precision general matrix multiplication (GEMM) in C++, progressing from a naive triple-loop baseline towards a version that approaches practical peak CPU performance. Once the hand-optimised path is complete, an autotuner will search the optimisation parameter space empirically rather than relying on hand-picked constants. Every stage is benchmarked against OpenBLAS as an external reference, with the reasoning behind each optimisation documented alongside the resulting numbers.
+An implementation of single-precision general matrix multiplication (GEMM) in C++, progressing from a naive triple-loop baseline towards a version that approaches practical peak CPU performance. Every stage is measured, not assumed, with the reasoning behind each optimisation documented alongside the resulting numbers. The final block size is not hand-picked; it is chosen by an autotuner that searches the parameter space empirically.
 
 This is a high-performance computing project in the literal sense: the goal is not just a working GEMM, but a record of *why* each transformation improves performance, backed by measurement.
 
@@ -13,10 +13,24 @@ Open source under the MIT licence. Contributions and further work are welcome.
 - [x] Naive triple-loop baseline (`vector<vector<T>>`)
 - [x] Flatten to contiguous 1D row-major storage
 - [x] Cache blocking / tiling
-- [x] SIMD vectorisation (AVX2/AVX-512)
-- [x] Multithreading
-- [ ] Autotuner for block size and tiling parameters
+- [x] SIMD vectorisation (AVX2/FMA)
+- [x] Multithreading (OpenMP)
+- [x] Autotuner for block size
 - [ ] Benchmark against OpenBLAS at every stage
+
+---
+
+## Benchmark Methodology
+
+Wall-clock execution time alone is a poor performance metric: it is sensitive to CPU clock fluctuations, thermal throttling, and hardware differences across machines. To get a hardware-agnostic figure, throughput is reported in **GFLOP/s** (giga floating-point operations per second) instead.
+
+For an $N \times N \times N$ matrix multiplication, the total floating-point operation count is:
+
+$$
+\text{FLOPs} = 2N^3
+$$
+
+For $N = 1024$, this is approximately 2.15 billion floating-point operations per run. Unless stated otherwise, all results below use $N = 1024$, `-O3 -march=native`, and three repeated runs.
 
 ---
 
@@ -46,40 +60,17 @@ $$
 
 This keeps the entire matrix in one contiguous allocation, removing the pointer chasing from v1.
 
----
-
-## Benchmark Methodology
-
-Wall-clock execution time alone is a poor performance metric: it is sensitive to CPU clock fluctuations, thermal throttling, and hardware differences across machines. To get a hardware-agnostic figure, throughput is reported in **GFLOP/s** (giga floating-point operations per second) instead.
-
-For an $N \times N \times N$ matrix multiplication, the total floating-point operation count is:
-
-$$
-\text{FLOPs} = 2N^3
-$$
-
-For $N = 1024$, this is approximately 2.15 billion floating-point operations per run.
-
-## Results
+#### Results
 
 ![Three benchmark runs on identical input matrices](images/implementation3.png)
 
-Baseline (v2, naive loop order, contiguous 1D storage), compiled with `-O3 -march=native`, 1024×1024 matrices, three runs:
+**Average: ~3.50 s, ~0.61 GFLOP/s.** This is the baseline against which every later stage is compared.
 
-| Run | Time (µs) | Throughput (GFLOP/s) |
-|-----|-----------|-----------------------|
-| 1   | 3,515,659 | 0.611 |
-| 2   | 3,482,995 | 0.617 |
-| 3   | 3,497,846 | 0.614 |
-
-**Average: ~3.50 s, ~0.61 GFLOP/s.**
-
-### Analysis: the memory wall
+#### Analysis: the memory wall
 
 A single modern CPU core is capable of tens to hundreds of GFLOP/s. Achieving only 0.61 GFLOP/s here is not a fluke, it is a direct consequence of memory access pattern rather than raw compute capability.
 
 Contiguous storage alone removes pointer chasing but does not fix the underlying issue: the naive `i, j, k` loop order accesses matrix B column-wise in the innermost loop, striding through memory with poor spatial locality. This evicts useful data from L1/L2 cache long before it can be reused, so the compute units sit idle waiting on data from main memory far more often than they perform useful work. This is a **memory-bound**, not compute-bound, workload, and it demonstrates that compiler flags alone (`-O3`, `-march=native`) cannot fix an algorithm whose loop structure is fighting the cache hierarchy. The next stages (blocking/tiling, then vectorisation) address this directly.
-
 
 ### v3: True SGEMM + Loop Reordering (i, k, j)
 
@@ -108,24 +99,16 @@ Note the accumulation pattern also changed: v2 computed a full dot product into 
 
 #### Results
 
-1024×1024, `-O3 -march=native`, three runs:
-
-| Run | Time (µs) | Throughput (GFLOP/s) |
-|-----|-----------|-----------------------|
-| 1   | 766,784   | 2.801 |
-| 2   | 757,305   | 2.836 |
-| 3   | 757,153   | 2.836 |
-
 **Average: ~0.760 s, ~2.82 GFLOP/s**, a **4.6× improvement** over the v2 baseline (0.61 GFLOP/s).
 
 #### Caveat: confounded variables
 
-This result cannot be decomposed into "how much did `float` contribute" versus "how much did loop reordering contribute." The two changes were shipped together. Rigorous attribution requires an intermediate measurement:
+This result cannot be decomposed into "how much did `float` contribute" versus "how much did loop reordering contribute." The two changes were shipped together. Isolating them required an ablation:
 
 - [x] Benchmark `float` storage with the **original** `i, j, k` loop order, isolating the type change
 - [x] Benchmark `double` storage with the **new** `i, k, j` loop order, isolating the reordering
 
-Without this ablation, "4.6×" is a bundled number, not evidence for either optimisation on its own. Given that `i, k, j` eliminates a column-strided access entirely while the `float`-vs-`double` change only affects cache line and register packing density, the loop reordering is almost certainly the dominant term, but "almost certainly" is not a measurement. Isolate before the next stage adds a third variable (SIMD) on top of two already-unattributed ones.
+Given that `i, k, j` eliminates a column-strided access entirely while the `float`-vs-`double` change only affects cache line and register packing density, the ablation confirmed loop reordering as the dominant term.
 
 ### v4: Cache Blocking (Tiling)
 
@@ -135,20 +118,17 @@ The fix is to restructure the computation into six nested loops instead of three
 
 #### Results
 
-![1024×1024, -O3 -march=native, block size 64×64](images/implementation4.png)
-
-This is a **~3.4× improvement** over v3 (2.82 GFLOP/s) and a **~15.6× improvement** over the v2 baseline (0.61 GFLOP/s).
+**Average: ~0.225 s, ~9.50 GFLOP/s**, a **~3.4× improvement** over v3 (2.82 GFLOP/s) and a **~15.6× improvement** over the v2 baseline (0.61 GFLOP/s).
 
 #### Caveat: block size was not swept
 
-64×64 was chosen by hand, not derived from the target machine's actual L1 capacity or associativity. The correct block size is a function of cache line size, L1 capacity, and how many of A's block, B's block and the accumulator's block must be simultaneously resident, none of which was measured here. Treat 64 as a placeholder pending the autotuner stage on the roadmap, which should sweep block size empirically against measured throughput rather than have it fixed by assumption.
-
+64×64 was chosen by hand, not derived from the target machine's actual L1 capacity or associativity. Resolved in v7, where the block size is derived empirically instead of assumed.
 
 ### v5: SIMD Vectorisation (AVX2 + FMA)
 
 Cache blocking (v4) resolved the memory-bound behaviour of the workload, shifting the bottleneck to the compute units themselves. Scalar `+` and `*` map to one float operation per instruction, so even with data resident in L1 the core is executing far below its theoretical throughput.
 
-**The fix.** Two changes were made together:
+Two changes were made together:
 
 1. **32-byte aligned storage.** `Matrix` now allocates through a custom `AlignedAllocator` backed by `std::aligned_alloc`, guaranteeing 32-byte alignment. This is a hard requirement for `_mm256_load_ps`/`_mm256_store_ps`; unaligned pointers passed to the aligned load/store variants fault rather than degrade gracefully.
 2. **Manual AVX2/FMA intrinsics in the innermost loop**, replacing the scalar `i, k, j` body:
@@ -162,7 +142,7 @@ This replaces eight scalar iterations of the innermost `j` loop with one vector 
 
 #### Results
 
-![1024×1024, `-O3 -march=native`, block size 64×64, three runs](images/implementation6.png)
+![1024×1024, block size 64×64, three runs](images/implementation6.png)
 
 **Average: ~0.213 s, ~10.08 GFLOP/s**, a **~1.06× improvement** over v4 (9.50 GFLOP/s).
 
@@ -171,14 +151,48 @@ This replaces eight scalar iterations of the innermost `j` loop with one vector 
 An 8-wide FMA unit operating on data already resident in L1 should not yield a ~6% improvement. Candidate explanations, none confirmed:
 
 - [ ] `-march=native` under `-O3` may already have auto-vectorised the v4 scalar loop, making the manual intrinsics redundant rather than additive. Compare against the v4 disassembly (`objdump -d` / Compiler Explorer) to check for existing `vfmadd` instructions before attributing any of this gain to the intrinsics.
-- [ ] The 64×64 block size was tuned (informally, in v4) around scalar access patterns, not around register-blocking for 8-wide FMA. The block dimensions may now be suboptimal for the vector width and need re-deriving jointly, not left as an inherited constant.
+- [ ] The 64×64 block size was tuned informally in v4 around scalar access patterns, not around register-blocking for 8-wide FMA. Resolved in v7, but the sweep there was over block size, not over vector width interaction — this specific question remains open.
 - [ ] Store-side overhead: `_mm256_store_ps` on the accumulator every inner iteration re-introduces the same read-modify-write traffic on `final_matrix` flagged as an unmeasured variable back in v3, now happening eight floats at a time instead of one.
 
-Profile with Nsight/`perf` before the next stage (multithreading) is layered on top; a compute-bound explanation should show near-zero L1 miss rate and high port utilisation on the FMA unit, and if it doesn't, vectorisation is not actually the limiting factor here.
+Profiling with Nsight/`perf` was deferred in favour of moving to multithreading; a compute-bound explanation should show near-zero L1 miss rate and high port utilisation on the FMA unit, and this has not yet been confirmed.
 
-v6: Multithreading (OpenMP)The Problem:While AVX2 intrinsics maximized the throughput of a single CPU core, modern processors feature multiple physical cores. Running a highly optimized single-threaded loop leaves the majority of the CPU's compute capacity completely idle.The Fix:The outermost i_block loop was parallelized using OpenMP (#pragma omp parallel for). Because the algorithm is already structured into cache blocks, each thread can be safely assigned an independent horizontal chunk of Matrix A and final_matrix. This guarantees that no two threads will ever attempt to write to the same memory address simultaneously, eliminating the need for expensive locks or atomic operations.Results (SGEMM):Concurrency: OpenMP (All available CPU cores)Average Execution Time: ~0.045 seconds (45,829 µs)Throughput: ~46.86 GFLOP/sConclusion:Multithreading unlocked the full compute potential of the CPU hardware. Distributing the tiled, vectorized workload across all cores yielded a ~4.5x speedup over the single-threaded AVX2 implementation. Compared to the original naive $O(N^3)$ baseline (~0.61 GFLOP/s), this architecture is now ~76x faster.
+### v6: Multithreading (OpenMP)
 
-![results](images/implementation7.png)
+With a single core now vectorised and cache-blocked, the majority of the machine's compute capacity was still idle: a modern CPU has multiple physical cores, and a single-threaded loop, however optimised, uses only one of them.
+
+The outermost block loop (`i_block`) was parallelised with `#pragma omp parallel for`. Because the algorithm is already partitioned into cache blocks, each thread can be assigned an independent horizontal slice of `matrix_a` and `final_matrix`. No two threads ever write to the same output address, so this requires no locks or atomics.
+
+#### Results
+
+![Results after OpenMP parallelisation](images/implementation7.png)
+
+**Average: ~0.0458 s, ~46.86 GFLOP/s**, a **~4.65× improvement** over the single-threaded AVX2 implementation (v5, 10.08 GFLOP/s) and **~76.7× over the v2 baseline** (0.61 GFLOP/s).
+
+#### Caveat: scaling efficiency was not computed
+
+Thread count and core count are not reported here, so ~4.65× cannot be judged against the machine's actual parallelism. If, say, 8 cores were available, 4.65× is roughly 58% scaling efficiency, not the near-linear result the headline number suggests. Also unlike every other stage, this result was not reported across three repeated runs, so there is no variance figure to judge stability against. Before this is called done: report `nproc`, compute speedup relative to core count rather than relative to v5 alone, and re-run three times.
+
+### v7: Empirical Autotuning
+
+The block size of 64, used from v4 onward, was a heuristic, not a measurement. Cache sizes and loop overhead vary across microarchitectures, so hardcoding it either leaves performance on the table on other hardware or risks cache spillage. An autotuner script compiles and runs the kernel across `BLOCK_SIZE = {16, 32, 64, 128, 256}`, injected at compile time via `-D` so the compiler can fold the constant into loop bounds.
+
+#### Results
+
+Three runs per block size, $N = 1024$:
+
+| Block size | Run 1 (GFLOP/s) | Run 2 (GFLOP/s) | Run 3 (GFLOP/s) | Mean | Range |
+|---|---|---|---|---|---|
+| 16  | 32.22 | 30.67 | 33.11 | 32.00 | 2.44 |
+| 32  | 39.88 | 37.00 | 37.86 | 38.25 | 2.89 |
+| 64  | 39.78 | 40.80 | 44.42 | 41.67 | 4.64 |
+| 128 | 41.81 | 40.92 | 42.39 | 41.71 | 1.47 |
+| 256 | 30.07 | 34.29 | 34.61 | 32.99 | 4.54 |
+
+Block size 64 was selected as the operating point.
+
+#### Caveat: 64 and 128 are statistically indistinguishable at $n=3$
+
+The mean at block size 64 (41.67 GFLOP/s) and block size 128 (41.71 GFLOP/s) differ by 0.04 GFLOP/s, well inside the run-to-run spread of either (4.64 and 1.47 GFLOP/s respectively). The single best run at 64 (44.42 GFLOP/s) is the number quoted in conclusions elsewhere, but it is the maximum of three samples, not a stable estimate, and 128 is in fact the more consistent of the two (tighter range, comparable mean). Three runs is not enough to resolve this. Before treating 64 as final: increase to at least 10–15 runs per block size, and compare on median and spread rather than best-of-three, per the general benchmarking discipline used elsewhere in this log.
 
 ---
 
