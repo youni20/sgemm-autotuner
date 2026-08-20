@@ -14,7 +14,7 @@ Open source under the MIT licence. Contributions and further work are welcome.
 - [x] Flatten to contiguous 1D row-major storage
 - [x] Cache blocking / tiling
 - [x] SIMD vectorisation (AVX2/AVX-512)
-- [ ] Multithreading
+- [x] Multithreading
 - [ ] Autotuner for block size and tiling parameters
 - [ ] Benchmark against OpenBLAS at every stage
 

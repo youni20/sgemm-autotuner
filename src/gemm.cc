@@ -17,10 +17,12 @@ Matrix gemm(const Matrix& matrix_a, const Matrix& matrix_b)
     // Set the block size so we can now counter Cache Blocking
     const int BLOCK_SIZE { 64 };
 
-    // Instead of stepping by 1, these loops jump forward by BLOCK_SIZE
-    for (int i_block { 0 }; i_block < matrix_a.get_rows(); i_block += BLOCK_SIZE) {
-        for (int k_block { 0 }; k_block < matrix_a.get_colum(); k_block += BLOCK_SIZE) {
-            for (int j_block { 0 }; j_block < matrix_b.get_colum(); j_block += BLOCK_SIZE) {
+// Instead of stepping by 1, these loops jump forward by BLOCK_SIZE
+// Tell the compilers to split this loop accross all available cpu cores
+#pragma omp parallel for
+    for (int i_block = 0; i_block < matrix_a.get_rows(); i_block += BLOCK_SIZE) {
+        for (int k_block = 0; k_block < matrix_a.get_colum(); k_block += BLOCK_SIZE) {
+            for (int j_block = 0; j_block < matrix_b.get_colum(); j_block += BLOCK_SIZE) {
 
                 // We use std::min to prevent going out of bounds if the matrix size
                 // if not perfectly divisible by 64 (e.g., a 1000x1000 matrix).

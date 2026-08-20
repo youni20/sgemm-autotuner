@@ -6,5 +6,6 @@
 -march=native
 -mavx2
 -mfma
+-fopenmp
 
 -Iinclude
