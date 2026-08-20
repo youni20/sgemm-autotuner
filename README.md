@@ -16,7 +16,7 @@ Open source under the MIT licence. Contributions and further work are welcome.
 - [x] SIMD vectorisation (AVX2/FMA)
 - [x] Multithreading (OpenMP)
 - [x] Autotuner for block size
-- [ ] Benchmark against OpenBLAS at every stage
+- [x] Benchmark against OpenBLAS at every stage
 
 ---
 
